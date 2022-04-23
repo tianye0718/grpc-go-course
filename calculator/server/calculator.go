@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"math"
 
 	pb "github.com/tianye0718/grpc-go-course/calculator/proto"
 )
@@ -49,5 +50,27 @@ func (s *Server) Avg(stream pb.CalculatorService_AvgServer) error {
 		count++
 		sum += req.Num
 		log.Printf("Received number from client: %f\n", req.Num)
+	}
+}
+
+func (s *Server) Max(stream pb.CalculatorService_MaxServer) error {
+	log.Println("Max was invoked")
+
+	currentMax := math.MinInt32
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("Error while receiving client request: %v\n", err)
+		}
+		if req.Num > int32(currentMax) {
+			currentMax = int(req.Num)
+		}
+		err = stream.Send(&pb.MaxResponse{Max: int32(currentMax)})
+		if err != nil {
+			log.Fatalf("Error while sending data to client: %v\n", err)
+		}
 	}
 }

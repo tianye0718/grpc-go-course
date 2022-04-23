@@ -73,3 +73,45 @@ func doAvg(c pb.CalculatorServiceClient) {
 	}
 	log.Printf("Avg result received from server: %f\n", res.Result)
 }
+
+func doMax(c pb.CalculatorServiceClient) {
+	log.Println("doMax was invoked")
+
+	// create stream
+	stream, err := c.Max(context.Background())
+	if err != nil {
+		log.Fatalf("Error while creating stream: %v\n", err)
+	}
+	// prepare numbers that will be sent to server
+	n := []int{1, 5, 3, 6, 2, 20}
+
+	// channel
+	waitc := make(chan struct{})
+	// Goroutine for sending request
+	go func() {
+		for _, v := range n {
+			log.Printf("sending request to server: %v\n", v)
+			stream.Send(&pb.MaxRequest{Num: int32(v)})
+			time.Sleep(time.Second)
+		}
+		stream.CloseSend()
+	}()
+
+	// Goroutine for receiving response
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Printf("Error while receiving response from server: %v\n", err)
+				break
+			}
+			log.Printf("Received from server: %v\n", res.Max)
+		}
+		close(waitc)
+	}()
+
+	<-waitc
+}
